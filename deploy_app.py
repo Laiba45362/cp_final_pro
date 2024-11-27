@@ -12,23 +12,26 @@ pipeline = joblib.load('customer_churn_model.pkl')
 
 # Define a function for preprocessing new data
 def preprocess_data(df):
-    # Make sure to use the same columns as in training
+    # List of numerical and categorical columns based on your model's training data
     numerical_cols = ['tenure', 'MonthlyCharges', 'TotalCharges', 'TotalSpent']
     categorical_cols = ['gender_Female', 'Partner_Yes', 'Dependents_Yes', 
                         'PhoneService_Yes', 'MultipleLines_Yes', 'InternetService_Fiber optic', 
                         'OnlineSecurity_Yes', 'OnlineBackup_Yes', 'DeviceProtection_Yes', 
                         'TechSupport_Yes', 'StreamingTV_Yes', 'StreamingMovies_Yes', 
                         'Contract_Two year', 'PaperlessBilling_Yes', 'PaymentMethod_Credit card (automatic)']
-    
-    # Ensure that categorical columns are present (if any are missing, create dummy ones)
+
+    # Check for missing categorical columns and add them with default value 0
     for col in categorical_cols:
         if col not in df.columns:
-            df[col] = 0  # Default to 0 for missing columns
+            df[col] = 0  # Default to 0 for missing categorical columns
 
-    # Ensure numerical columns are present (fill missing with 0 or a default value)
+    # Check for missing numerical columns and add them with default value 0
     for col in numerical_cols:
         if col not in df.columns:
             df[col] = 0  # Default to 0 for missing numerical columns
+
+    # Ensure all columns are in the correct order as expected by the model
+    df = df[categorical_cols + numerical_cols]
 
     # Scale the numerical columns (this is important because the model was trained with scaled data)
     scaler = StandardScaler()
@@ -39,7 +42,7 @@ def preprocess_data(df):
 
 # Function to predict churn based on the preprocessed data
 def predict_churn(new_data):
-    # Preprocess the new data
+    # Preprocess the new data to match the model's training data format
     new_data_processed = preprocess_data(new_data)
 
     # Use the pipeline to predict churn (it includes the preprocessor)
@@ -76,8 +79,11 @@ new_data = pd.DataFrame({
 
 # Predict churn when the user clicks the button
 if st.button('Predict Churn'):
-    prediction = predict_churn(new_data)
-    if prediction == 1:
-        st.write("The customer is likely to churn.")
-    else:
-        st.write("The customer is unlikely to churn.")
+    try:
+        prediction = predict_churn(new_data)
+        if prediction == 1:
+            st.write("The customer is likely to churn.")
+        else:
+            st.write("The customer is unlikely to churn.")
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
