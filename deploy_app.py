@@ -2,38 +2,9 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load the trained model
-pipeline = joblib.load('customer_churn_model.pkl')
-
-# Define a function to preprocess new data
-def preprocess_data(new_data):
-    # One-Hot Encoding for categorical features
-    categorical_features = ['gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines',
-                            'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection',
-                            'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract',
-                            'PaperlessBilling', 'PaymentMethod']
-    
-    new_data = pd.get_dummies(new_data, columns=categorical_features, drop_first=True)
-    
-    # Ensure all necessary columns are present
-    required_columns = ['tenure', 'MonthlyCharges', 'TotalCharges', 'TotalSpent', 'InvoiceCount',
-                        'gender_Male', 'Partner_Yes', 'Dependents_Yes', 'PhoneService_Yes', 'MultipleLines_No',
-                        'MultipleLines_Yes', 'InternetService_Fiber optic', 'InternetService_No',
-                        'OnlineSecurity_No', 'OnlineSecurity_Yes', 'OnlineBackup_No', 'OnlineBackup_Yes',
-                        'DeviceProtection_No', 'DeviceProtection_Yes', 'TechSupport_No', 'TechSupport_Yes',
-                        'StreamingTV_No', 'StreamingTV_Yes', 'StreamingMovies_No', 'StreamingMovies_Yes',
-                        'Contract_One year', 'Contract_Two year', 'PaperlessBilling_Yes',
-                        'PaymentMethod_Credit card (automatic)', 'PaymentMethod_Electronic check',
-                        'PaymentMethod_Mailed check']
-    
-    for col in required_columns:
-        if col not in new_data.columns:
-            new_data[col] = 0
-    
-    # Reorder columns to match the training data
-    new_data = new_data[required_columns]
-    
-    return new_data
+# Load the preprocessing pipeline and the trained model
+preprocessor = joblib.load('churn_prediction_pipeline.pkl')
+model = joblib.load('customer_churn_model.pkl')
 
 # Streamlit app
 st.title('Customer Churn Prediction')
@@ -91,11 +62,11 @@ new_data = pd.DataFrame({
 
 # Predict button
 if st.button('Predict Churn'):
-    # Preprocess the new data
-    new_data_processed = preprocess_data(new_data)
+    # Preprocess the new data using the pipeline
+    new_data_processed = preprocessor.transform(new_data)
 
     # Predict churn
-    prediction = pipeline.predict(new_data_processed)
+    prediction = model.predict(new_data_processed)
 
     # Display the prediction
     if prediction[0] == 1:
