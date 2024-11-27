@@ -1,115 +1,83 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+import joblib
 from sklearn.preprocessing import StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score, roc_auc_score
-from imblearn.over_sampling import SMOTE
-import matplotlib.pyplot as plt
-import seaborn as sns
-import joblib
-import streamlit as st
 
-# Load the saved model
-model = joblib.load('customer_churn_model.pkl')  # Replace with your model filename
+# Load the trained pipeline
+pipeline = joblib.load('customer_churn_model.pkl')
 
+# Define a function for preprocessing new data
 def preprocess_data(df):
-    """
-    Preprocesses the given DataFrame.
+    # Make sure to use the same columns as in training
+    numerical_cols = ['tenure', 'MonthlyCharges', 'TotalCharges', 'TotalSpent']
+    categorical_cols = ['gender_Female', 'Partner_Yes', 'Dependents_Yes', 
+                        'PhoneService_Yes', 'MultipleLines_Yes', 'InternetService_Fiber optic', 
+                        'OnlineSecurity_Yes', 'OnlineBackup_Yes', 'DeviceProtection_Yes', 
+                        'TechSupport_Yes', 'StreamingTV_Yes', 'StreamingMovies_Yes', 
+                        'Contract_Two year', 'PaperlessBilling_Yes', 'PaymentMethod_Credit card (automatic)']
+    
+    # Ensure that categorical columns are present (if any are missing, create dummy ones)
+    for col in categorical_cols:
+        if col not in df.columns:
+            df[col] = 0  # Default to 0 for missing columns
 
-    Args:
-        df (pd.DataFrame): The DataFrame to preprocess.
+    # Ensure numerical columns are present (fill missing with 0 or a default value)
+    for col in numerical_cols:
+        if col not in df.columns:
+            df[col] = 0  # Default to 0 for missing numerical columns
 
-    Returns:
-        pd.DataFrame: The preprocessed DataFrame.
-    """
-
-    # Handle missing values (if any)
-    df = df.fillna(0)  # Replace with appropriate imputation strategy
-
-    # Convert categorical columns to numerical using one-hot encoding
-    categorical_cols = ['gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines',
-                        'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection',
-                        'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract',
-                        'PaperlessBilling', 'PaymentMethod']
-    df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-
-    # Scale numerical features (if necessary)
-    numerical_cols = ['tenure', 'MonthlyCharges', 'TotalCharges', 'TotalSpent', 'InvoiceNo']
+    # Scale the numerical columns (this is important because the model was trained with scaled data)
     scaler = StandardScaler()
     df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
 
+    # Return the processed DataFrame
     return df
 
+# Function to predict churn based on the preprocessed data
 def predict_churn(new_data):
-    """
-    Preprocesses new data and predicts churn probability.
+    # Preprocess the new data
+    new_data_processed = preprocess_data(new_data)
 
-    Args:
-        new_data (pd.DataFrame): A DataFrame containing new customer data.
+    # Use the pipeline to predict churn (it includes the preprocessor)
+    prediction = pipeline.predict(new_data_processed)
+    return prediction
 
-    Returns:
-        float: The predicted probability of churn for the new data.
-    """
+# Streamlit interface
+st.title("Customer Churn Prediction")
 
-    new_data_processed = preprocess_data(new_data.copy())
-    prediction_proba = model.predict_proba(new_data_processed)[:, 1]
-    return prediction_proba[0]
+# Get user input
+tenure = st.slider('Tenure (months)', 0, 72, 10)
+monthly_charges = st.number_input('Monthly Charges', min_value=0.0, max_value=10000.0, value=70.0)
+total_charges = st.number_input('Total Charges', min_value=0.0, max_value=100000.0, value=700.0)
+total_spent = st.number_input('Total Spent', min_value=0.0, max_value=100000.0, value=700.0)
 
-# Streamlit app
-st.title("Customer Churn Prediction App")
+# Example categorical inputs (adjust based on your features)
+gender_female = st.selectbox('Gender (Female)', [0, 1])  # Assuming binary (0 or 1)
+partner_yes = st.selectbox('Partner (Yes)', [0, 1])  # Assuming binary (0 or 1)
+dependents_yes = st.selectbox('Dependents (Yes)', [0, 1])  # Assuming binary (0 or 1)
+phone_service_yes = st.selectbox('Phone Service (Yes)', [0, 1])  # Assuming binary (0 or 1)
 
-# Get user input for new data
-gender = st.selectbox("Gender", ["Male", "Female"])
-partner = st.selectbox("Partner", ["Yes", "No"])
-dependents = st.selectbox("Dependents", ["Yes", "No"])
-phone_service = st.selectbox("Phone Service", ["Yes", "No"])
-multiple_lines = st.selectbox("Multiple Lines", ["No phone service", "No", "Yes"])
-internet_service = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
-online_security = st.selectbox("Online Security", ["No", "Yes", "No internet service"])
-online_backup = st.selectbox("Online Backup", ["No", "Yes", "No internet service"])
-device_protection = st.selectbox("Device Protection", ["No", "Yes", "No internet service"])
-tech_support = st.selectbox("Tech Support", ["No", "Yes", "No internet service"])
-streaming_tv = st.selectbox("Streaming TV", ["No", "Yes", "No internet service"])
-streaming_movies = st.selectbox("Streaming Movies", ["No", "Yes", "No internet service"])
-contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
-paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"])
-payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
-tenure = st.number_input("Tenure", min_value=0, max_value=72)
-monthly_charges = st.number_input("Monthly Charges", min_value=0.0, max_value=120.0)
-total_charges = st.number_input("Total Charges", min_value=0.0, max_value=9000.0)
-
-# Create a DataFrame from user input
+# Construct the input data as a DataFrame
 new_data = pd.DataFrame({
-    "gender": [gender],
-    "Partner": [partner],
-    "Dependents": [dependents],
-    "PhoneService": [phone_service],
-    "MultipleLines": [multiple_lines],
-    "InternetService": [internet_service],
-    "OnlineSecurity": [online_security],
-    "OnlineBackup": [online_backup],
-    "DeviceProtection": [device_protection],
-    "TechSupport": [tech_support],
-    "StreamingTV": [streaming_tv],
-    "StreamingMovies": [streaming_movies],
-    "Contract": [contract],
-    "PaperlessBilling": [paperless_billing],
-    "PaymentMethod": [payment_method],
-    "tenure": [tenure],
-    "MonthlyCharges": [monthly_charges],
-    "TotalCharges": [total_charges]
+    'tenure': [tenure],
+    'MonthlyCharges': [monthly_charges],
+    'TotalCharges': [total_charges],
+    'TotalSpent': [total_spent],
+    'gender_Female': [gender_female],
+    'Partner_Yes': [partner_yes],
+    'Dependents_Yes': [dependents_yes],
+    'PhoneService_Yes': [phone_service_yes],
+    # Add other columns based on your model's features
 })
 
-# Predict churn probability
-if st.button("Predict Churn Probability"):
-    probability = predict_churn(new_data)
-    st.write(f"Predicted churn probability: {probability:.2f}")
-
-    if probability > 0.5:
-        st.warning("This customer has a high chance of churning.")
+# Predict churn when the user clicks the button
+if st.button('Predict Churn'):
+    prediction = predict_churn(new_data)
+    if prediction == 1:
+        st.write("The customer is likely to churn.")
     else:
-        st.success("This customer is less likely to churn.")
+        st.write("The customer is unlikely to churn.")
