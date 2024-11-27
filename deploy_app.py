@@ -6,6 +6,9 @@ import joblib
 model = joblib.load('customer_churn_model.pkl')
 scaler = joblib.load('scaler.pkl')
 
+# Load the training data columns
+training_columns = joblib.load('training_columns.pkl')
+
 # Define a function to preprocess new data and predict churn
 def preprocess_and_predict(new_data):
     # Convert categorical features to numerical using One-Hot Encoding
@@ -17,7 +20,6 @@ def preprocess_and_predict(new_data):
     new_data = pd.get_dummies(new_data, columns=categorical_columns, drop_first=True)
     
     # Ensure the new data has the same columns as the training data
-    training_columns = model.feature_names_in_
     missing_cols = set(training_columns) - set(new_data.columns)
     for col in missing_cols:
         new_data[col] = 0  # Add missing columns with 0 values
