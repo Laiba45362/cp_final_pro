@@ -11,29 +11,38 @@ def preprocess_data(input_data):
     # Convert the input_data to DataFrame if it's not already
     input_data = pd.DataFrame([input_data]) 
     
-    # Ensure categorical and numerical columns are processed similarly to your training pipeline
+    # Extract the column names the model expects from its preprocessor
+    preprocessor = model.named_steps['preprocessor']  # Accessing the preprocessor from the pipeline
+
+    # Handle categorical columns (OneHotEncoding)
     categorical_columns = ['gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines', 
                           'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 
                           'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod']
-    
+
+    # Handle numerical columns
     numerical_columns = ['tenure', 'MonthlyCharges', 'TotalCharges', 'TotalSpent']
-    
-    # Handle categorical columns (OneHotEncoding) and numerical columns (Standard scaling)
+
+    # One-hot encode categorical features (mimicking the training process)
     input_data = pd.get_dummies(input_data, columns=categorical_columns, drop_first=True)
 
-    # Handle numerical columns: ensure they are converted to numeric
+    # Ensure all numerical columns are in the right format
     input_data[numerical_columns] = input_data[numerical_columns].apply(pd.to_numeric, errors='coerce')
     
-    # Ensure the final input data matches the expected column order of the model
-    model_columns = model.named_steps['preprocessor'].transformers_[1][1].get_feature_names_out(categorical_columns).tolist() + numerical_columns
-    input_data = input_data[model_columns]
+    # Use the preprocessor to get the columns that the model expects
+    transformed_columns = preprocessor.transformers_[1][1].get_feature_names_out(categorical_columns).tolist() + numerical_columns
+    
+    # Align the input data with the transformed columns
+    input_data = input_data[transformed_columns]
     
     return input_data
 
 # Streamlit UI
 st.title("Customer Churn Prediction")
 
-st.write("""This application predicts whether a customer will churn based on the features of the customer. Fill in the details below to predict.""")
+st.write("""
+    This application predicts whether a customer will churn based on the features of the customer.
+    Fill in the details below to predict.
+""")
 
 # User input form
 with st.form(key="input_form"):
@@ -94,4 +103,3 @@ if submit_button:
         st.write("The customer is likely to churn.")
     else:
         st.write("The customer is not likely to churn.")
-
