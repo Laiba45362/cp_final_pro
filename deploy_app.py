@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 
 # Load the trained model and scaler
-model = joblib.load('customer_churn_model(1).pkl')
+model = joblib.load('customer_churn_model.pkl')
 scaler = joblib.load('scaler.pkl')
 
 # Function to preprocess the input data
