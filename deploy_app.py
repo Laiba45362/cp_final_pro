@@ -60,11 +60,12 @@ new_data = pd.DataFrame({
     'PaymentMethod': [payment_method]
 })
 
+# Preprocess the new data using the same pipeline as in training
+# Ensure that the transformation process applies scaling and one-hot encoding
+new_data_processed = preprocessor.transform(new_data)
+
 # Predict button
 if st.button('Predict Churn'):
-    # Preprocess the new data using the pipeline
-    new_data_processed = preprocessor.transform(new_data)
-
     # Predict churn
     prediction = model.predict(new_data_processed)
 
