@@ -2,41 +2,38 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.preprocessing import StandardScaler
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.pipeline import Pipeline
 
-# Load the trained model
+# Load the trained model (make sure it includes preprocessing in a pipeline)
 model = joblib.load('customer_churn_model.pkl')
 
 # Function to preprocess the new input data (similar to your original preprocessing)
 def preprocess_data(input_data):
-    # This should match the preprocessing steps you did before training the model
-    # For simplicity, let's assume we're only preprocessing numeric features and one-hot encoding categorical features
+    # Convert the input_data to DataFrame if it's not already
+    input_data = pd.DataFrame([input_data]) 
+    
+    # Ensure categorical and numerical columns are processed similarly to your training pipeline
     categorical_columns = ['gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines', 
                           'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 
                           'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod']
     
     numerical_columns = ['tenure', 'MonthlyCharges', 'TotalCharges', 'TotalSpent']
     
-    # Handle categorical columns (OneHotEncoding)
-    input_data = pd.DataFrame([input_data])  # Convert input data to DataFrame if it's not already
+    # Handle categorical columns (OneHotEncoding) and numerical columns (Standard scaling)
     input_data = pd.get_dummies(input_data, columns=categorical_columns, drop_first=True)
 
-    # Handle numerical columns (Standard scaling)
+    # Handle numerical columns: ensure they are converted to numeric
     input_data[numerical_columns] = input_data[numerical_columns].apply(pd.to_numeric, errors='coerce')
     
-    # Return the preprocessed input data ready for prediction
+    # Ensure the final input data matches the expected column order of the model
+    model_columns = model.named_steps['preprocessor'].transformers_[1][1].get_feature_names_out(categorical_columns).tolist() + numerical_columns
+    input_data = input_data[model_columns]
+    
     return input_data
 
 # Streamlit UI
 st.title("Customer Churn Prediction")
 
-st.write("""
-    This application predicts whether a customer will churn based on the features of the customer.
-    Fill in the details below to predict.
-""")
+st.write("""This application predicts whether a customer will churn based on the features of the customer. Fill in the details below to predict.""")
 
 # User input form
 with st.form(key="input_form"):
@@ -97,3 +94,4 @@ if submit_button:
         st.write("The customer is likely to churn.")
     else:
         st.write("The customer is not likely to churn.")
+
